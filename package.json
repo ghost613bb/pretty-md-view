@@ -1,0 +1,50 @@
+{
+  "name": "pretty-md-view",
+  "displayName": "Pretty Markdown Preview",
+  "description": "A lightweight, prettier Markdown preview panel for VS Code.",
+  "version": "0.0.1",
+  "publisher": "local-dev",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": ["Other"],
+  "activationEvents": [
+    "onCommand:prettyMdPreview.openPreview"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "prettyMdPreview.openPreview",
+        "title": "Pretty Markdown Preview: Open Preview"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "prettyMdPreview.openPreview",
+          "when": "resourceLangId == markdown",
+          "group": "navigation@100"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@types/markdown-it": "^14.1.2",
+    "@types/node": "^20.14.10",
+    "@types/vscode": "^1.90.0",
+    "typescript": "^5.5.4",
+    "vitest": "^2.0.5"
+  },
+  "dependencies": {
+    "highlight.js": "^11.10.0",
+    "markdown-it": "^14.1.0",
+    "markdown-it-task-lists": "^2.1.1"
+  }
+}
