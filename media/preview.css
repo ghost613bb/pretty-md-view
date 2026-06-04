@@ -1,23 +1,33 @@
 :root {
   color-scheme: light dark;
-  --pmv-bg: #ffffff;
-  --pmv-text: #24292f;
-  --pmv-muted: #57606a;
-  --pmv-border: #d0d7de;
-  --pmv-code-bg: #f6f8fa;
-  --pmv-link: #0969da;
-  --pmv-quote: #6e7781;
+  --pmv-bg: #f7f9f5;
+  --pmv-text: #26313d;
+  --pmv-muted: #63707d;
+  --pmv-border: #d5ddd4;
+  --pmv-panel-bg: #ffffff;
+  --pmv-table-head-bg: #e7f0e9;
+  --pmv-code-bg: #eef3ef;
+  --pmv-code-border: #d7e1d8;
+  --pmv-link: #1d6f91;
+  --pmv-quote-bg: #eef5f0;
+  --pmv-quote-border: #79a99b;
+  --pmv-quote: #455762;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --pmv-bg: #0d1117;
-    --pmv-text: #e6edf3;
-    --pmv-muted: #8b949e;
-    --pmv-border: #30363d;
-    --pmv-code-bg: #161b22;
-    --pmv-link: #58a6ff;
-    --pmv-quote: #8b949e;
+    --pmv-bg: #111816;
+    --pmv-text: #dce6df;
+    --pmv-muted: #93a39a;
+    --pmv-border: #2b3933;
+    --pmv-panel-bg: #16201c;
+    --pmv-table-head-bg: #223229;
+    --pmv-code-bg: #1b2822;
+    --pmv-code-border: #304238;
+    --pmv-link: #7cc7ac;
+    --pmv-quote-bg: #18251f;
+    --pmv-quote-border: #5f9583;
+    --pmv-quote: #b6c7bd;
   }
 }
 
@@ -42,8 +52,8 @@ body {
 .markdown-body h2,
 .markdown-body h3,
 .markdown-body h4 {
-  margin-top: 1.8em;
-  margin-bottom: 0.8em;
+  margin-top: 1.6em;
+  margin-bottom: 0.65em;
   line-height: 1.25;
   font-weight: 700;
 }
@@ -71,7 +81,7 @@ body {
 .markdown-body table,
 .markdown-body pre {
   margin-top: 0;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
 }
 
 .markdown-body a {
@@ -84,30 +94,44 @@ body {
 }
 
 .markdown-body blockquote {
-  padding: 0 1em;
+  margin-left: 0;
+  margin-right: 0;
+  padding: 14px 18px;
   color: var(--pmv-quote);
-  border-left: 0.25em solid var(--pmv-border);
+  background: var(--pmv-quote-bg);
+  border: 1px solid var(--pmv-border);
+  border-left: 5px solid var(--pmv-quote-border);
+  border-radius: 8px;
+}
+
+.markdown-body blockquote > :last-child {
+  margin-bottom: 0;
 }
 
 .markdown-body code {
-  padding: 0.2em 0.4em;
+  padding: 0.18em 0.42em;
   border-radius: 6px;
   background: var(--pmv-code-bg);
+  color: #29434d;
   font-family: ui-monospace, SFMono-Regular, SFMono, Menlo, Consolas, monospace;
   font-size: 0.88em;
 }
 
 .markdown-body pre {
   overflow: auto;
-  padding: 16px;
-  border-radius: 8px;
+  padding: 14px 18px;
+  border: 1px solid var(--pmv-code-border);
+  border-radius: 10px;
   background: var(--pmv-code-bg);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 60%);
 }
 
 .markdown-body pre code {
   padding: 0;
   background: transparent;
-  font-size: 0.9em;
+  color: inherit;
+  font-size: 0.92em;
+  line-height: 1.75;
 }
 
 .markdown-body table {
@@ -122,10 +146,11 @@ body {
 .markdown-body td {
   padding: 6px 13px;
   border: 1px solid var(--pmv-border);
+  background: var(--pmv-panel-bg);
 }
 
-.markdown-body tr:nth-child(2n) {
-  background: color-mix(in srgb, var(--pmv-code-bg) 70%, transparent);
+.markdown-body th {
+  background: var(--pmv-table-head-bg);
 }
 
 .markdown-body img {
