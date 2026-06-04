@@ -1,0 +1,61 @@
+.hljs {
+  color: var(--pmv-text);
+  background: transparent;
+}
+
+.hljs-comment,
+.hljs-quote {
+  color: var(--pmv-muted);
+}
+
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-subst {
+  color: #cf222e;
+}
+
+.hljs-literal,
+.hljs-number,
+.hljs-tag .hljs-attr,
+.hljs-template-variable,
+.hljs-variable {
+  color: #0550ae;
+}
+
+.hljs-doctag,
+.hljs-string {
+  color: #0a3069;
+}
+
+.hljs-section,
+.hljs-selector-id,
+.hljs-title {
+  color: #8250df;
+}
+
+@media (prefers-color-scheme: dark) {
+  .hljs-keyword,
+  .hljs-selector-tag,
+  .hljs-subst {
+    color: #ff7b72;
+  }
+
+  .hljs-literal,
+  .hljs-number,
+  .hljs-tag .hljs-attr,
+  .hljs-template-variable,
+  .hljs-variable {
+    color: #79c0ff;
+  }
+
+  .hljs-doctag,
+  .hljs-string {
+    color: #a5d6ff;
+  }
+
+  .hljs-section,
+  .hljs-selector-id,
+  .hljs-title {
+    color: #d2a8ff;
+  }
+}
