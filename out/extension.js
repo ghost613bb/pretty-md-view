@@ -37,11 +37,35 @@ exports.activate = activate;
 exports.deactivate = deactivate;
 const vscode = __importStar(require("vscode"));
 const constants_1 = require("./constants");
+const previewPanel_1 = require("./previewPanel");
 function activate(context) {
-    const disposable = vscode.commands.registerCommand(constants_1.OPEN_PREVIEW_COMMAND, () => {
-        vscode.window.showInformationMessage('Pretty Markdown Preview is ready.');
+    // 命令入口：确认当前编辑器是 Markdown 文件，然后打开或刷新美化预览。
+    const openPreview = vscode.commands.registerCommand(constants_1.OPEN_PREVIEW_COMMAND, () => {
+        const document = getActiveMarkdownDocument();
+        if (!document) {
+            vscode.window.showInformationMessage('Please open a Markdown file before starting Pretty Markdown Preview.');
+            return;
+        }
+        previewPanel_1.PreviewPanel.openOrUpdate(context.extensionUri, document);
     });
-    context.subscriptions.push(disposable);
+    // Markdown 文档内容变化时，通知预览面板按防抖策略重新渲染。
+    const changeListener = vscode.workspace.onDidChangeTextDocument((event) => {
+        if (event.document.languageId !== 'markdown') {
+            return;
+        }
+        previewPanel_1.PreviewPanel.updateIfPreviewing(event.document);
+    });
+    context.subscriptions.push(openPreview, changeListener);
 }
 function deactivate() { }
+function getActiveMarkdownDocument() {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) {
+        return undefined;
+    }
+    if (editor.document.languageId !== 'markdown') {
+        return undefined;
+    }
+    return editor.document;
+}
 //# sourceMappingURL=extension.js.map

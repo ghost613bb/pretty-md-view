@@ -39,6 +39,11 @@ const vscode = __importStar(require("vscode"));
 function buildPreviewHtml(options) {
     const previewCssUri = options.webview.asWebviewUri(vscode.Uri.joinPath(options.extensionUri, 'media', 'preview.css'));
     const highlightCssUri = options.webview.asWebviewUri(vscode.Uri.joinPath(options.extensionUri, 'media', 'highlight.css'));
+    // CSP 安全策略：
+    // 默认什么都不许加载
+    // 图片只能从允许的位置加载
+    // CSS 只能从插件自己的资源加载
+    // JS 脚本默认不允许随便执行
     const csp = [
         `default-src 'none'`,
         `img-src ${options.webview.cspSource} https: http: data:`,
