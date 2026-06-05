@@ -28,15 +28,43 @@ Pretty Markdown Preview 是一个轻量的 VS Code Markdown 美化预览插件�
   </tr>
 </table>
 
-### 主要功能
+### 支持范围
 
-- 在编辑器旁边打开美化 Markdown 预览。
-- 支持标题、段落、加粗、列表、任务列表、表格、引用、链接、图片和代码块。
-- 使用 `highlight.js` 高亮代码块。
-- 支持本地相对路径图片，例如 `./assets/a.png`。
-- 支持点击图片放大预览。
-- 编辑 Markdown 后自动刷新预览。
-- 提供命令面板入口和 Markdown 编辑器右键菜单入口。
+当前版本仅支持 **VS Code 内的本地 Markdown 美化预览**，具体能力如下：
+
+- 在当前编辑器旁边打开独立 Webview 预览面板。
+- 不替换 VS Code 自带 Markdown 编辑器，也不接管默认 Markdown 预览。
+- 支持通过命令面板执行 `Pretty Markdown Preview: Open Preview` 打开预览。
+- 支持在 Markdown 编辑器右键菜单中打开预览。
+- 支持编辑 Markdown 后自动刷新当前预览。
+- 支持标题、段落、分隔线、加粗、斜体、删除线和行内代码。
+- 支持有序列表、无序列表、嵌套列表和任务列表。
+- 支持引用块、链接、图片和代码块。
+- 支持 Markdown 管道表格。
+- 支持安全白名单内的原生 HTML 标签，例如 `table`、`tr`、`td`、`th`、`img`、`a`、`strong`、`span` 等。
+- 支持原生 HTML 表格中嵌入图片。
+- 支持使用 `highlight.js` 高亮已识别语言的围栏代码块。
+- 支持当前 Markdown 文件目录下的本地相对路径图片，例如 `./assets/a.png`。
+- 支持远程 `http` / `https` 图片和 `data:` 图片。
+- 支持点击预览中的图片进行放大查看。
+
+### 不支持范围
+
+当前版本不支持以下能力：
+
+- 不支持 Mermaid 图表渲染。
+- 不支持数学公式渲染，例如 LaTeX、KaTeX、MathJax。
+- 不支持 PlantUML、Graphviz 等图形 DSL 渲染。
+- 不支持导出 HTML、PDF 或图片。
+- 不支持主题切换、字体配置、字号配置或自定义 CSS。
+- 不支持编辑区与预览区同步滚动。
+- 不支持在预览中直接编辑 Markdown，也不是 Typora 式所见即所得编辑器。
+- 不支持替换或增强 VS Code 默认 Markdown Preview。
+- 不支持跨文件目录之外的本地资源访问，例如引用当前 Markdown 文件所在目录之外的图片。
+- 不支持执行任意 HTML、JavaScript 或内联事件。
+- 不支持 `script`、`iframe`、`style` 等高风险 HTML 标签。
+- 不支持 HTML 的 `style` 属性和 `onerror`、`onclick` 等事件属性。
+- 不支持插件市场发布、自动更新或在线同步配置；当前主要面向本地 `.vsix` 安装和本地开发。
 
 ### 安装使用
 
@@ -102,16 +130,6 @@ pretty-md-view-0.0.1.vsix
 
 这个 `.vsix` 文件可以发给别人安装，也可以自己本地安装使用。
 
-### 当前范围
-
-当前版本聚焦本地 Markdown 美化预览。暂不包含：
-
-- Mermaid
-- 数学公式
-- HTML/PDF 导出
-- 主题切换
-- 同步滚动
-- Typora 式所见即所得编辑
 
 ## English
 
@@ -141,15 +159,43 @@ The left side shows the Markdown source file. The right side shows the rendered 
   </tr>
 </table>
 
-### Features
+### Supported Scope
 
-- Opens a custom Markdown preview beside the editor.
-- Supports headings, paragraphs, bold text, lists, task lists, tables, blockquotes, links, images, and code blocks.
-- Highlights fenced code blocks with `highlight.js`.
-- Supports local relative image paths such as `./assets/a.png`.
-- Supports click-to-preview images in an overlay.
-- Refreshes automatically after Markdown edits.
-- Provides both Command Palette and Markdown editor context menu entries.
+This version only supports **local Markdown preview inside VS Code**. It currently supports:
+
+- Opening an independent Webview preview panel beside the current editor.
+- Keeping VS Code's built-in Markdown editor and default Markdown preview unchanged.
+- Opening the preview from the Command Palette with `Pretty Markdown Preview: Open Preview`.
+- Opening the preview from the Markdown editor context menu.
+- Automatically refreshing the current preview after Markdown edits.
+- Rendering headings, paragraphs, horizontal rules, bold text, italic text, strikethrough, and inline code.
+- Rendering ordered lists, unordered lists, nested lists, and task lists.
+- Rendering blockquotes, links, images, and fenced code blocks.
+- Rendering Markdown pipe tables.
+- Rendering allowlisted raw HTML tags, such as `table`, `tr`, `td`, `th`, `img`, `a`, `strong`, and `span`.
+- Rendering images inside raw HTML tables.
+- Highlighting recognized fenced code block languages with `highlight.js`.
+- Loading local relative images under the current Markdown file directory, such as `./assets/a.png`.
+- Loading remote `http` / `https` images and `data:` images.
+- Clicking preview images to open a larger overlay preview.
+
+### Unsupported Scope
+
+This version does not support:
+
+- Mermaid diagram rendering.
+- Math rendering, such as LaTeX, KaTeX, or MathJax.
+- PlantUML, Graphviz, or other diagram DSL rendering.
+- HTML, PDF, or image export.
+- Theme switching, font configuration, font-size configuration, or custom CSS.
+- Synchronized scrolling between the editor and preview.
+- Editing Markdown directly inside the preview; this is not a Typora-style WYSIWYG editor.
+- Replacing or enhancing VS Code's built-in Markdown Preview.
+- Accessing local resources outside the current Markdown file directory, such as images in unrelated folders.
+- Executing arbitrary HTML, JavaScript, or inline event handlers.
+- High-risk HTML tags such as `script`, `iframe`, or `style`.
+- HTML `style` attributes or event attributes such as `onerror` and `onclick`.
+- Marketplace publishing, automatic updates, or online configuration sync; this project is currently mainly for local `.vsix` installation and local development.
 
 ### Install
 
@@ -215,13 +261,3 @@ pretty-md-view-0.0.1.vsix
 
 You can share this `.vsix` file with others or install it locally.
 
-### Current Scope
-
-This version focuses on local Markdown preview. It does not include:
-
-- Mermaid
-- Math rendering
-- HTML/PDF export
-- Theme switching
-- Synchronized scrolling
-- Typora-style WYSIWYG editing
