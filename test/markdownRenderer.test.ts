@@ -23,6 +23,28 @@ describe('renderMarkdown', () => {
     expect(html).toContain('<td>1</td>');
   });
 
+  it('renders raw html table tags', () => {
+    const html = renderMarkdown('<table>\n<tr>\n<td width="50%" align="center"><strong>A</strong></td>\n</tr>\n</table>');
+
+    expect(html).toContain('<table>');
+    expect(html).toContain('<td width="50%" align="center"><strong>A</strong></td>');
+  });
+
+  it('renders images inside raw html tables', () => {
+    const html = renderMarkdown('<table>\n<tr>\n<td width="50%"><img src="./demo.png" alt="Demo image"></td>\n</tr>\n</table>');
+
+    expect(html).toContain('<table>');
+    expect(html).toContain('<td width="50%"><img src="./demo.png" alt="Demo image"></td>');
+  });
+
+  it('removes unsafe attributes from raw html', () => {
+    const html = renderMarkdown('<img src="./demo.png" onerror="alert(1)" style="width: 100px">');
+
+    expect(html).toContain('<img src="./demo.png">');
+    expect(html).not.toContain('onerror');
+    expect(html).not.toContain('style=');
+  });
+
   it('highlights known code languages', () => {
     const html = renderMarkdown('```ts\nconst value = 1;\n```');
 
@@ -39,5 +61,12 @@ describe('renderMarkdown', () => {
 
     expect(html).not.toContain('<script>');
     expect(html).toContain('&lt;script&gt;');
+  });
+
+  it('does not keep unsafe javascript links in raw html', () => {
+    const html = renderMarkdown('<a href="javascript:alert(1)">bad</a>');
+
+    expect(html).toContain('<a>bad</a>');
+    expect(html).not.toContain('javascript:');
   });
 });
