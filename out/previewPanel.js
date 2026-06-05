@@ -66,7 +66,7 @@ class PreviewPanel {
         }
         // 首次打开时在编辑器旁边创建 Webview 面板，资源访问只放开插件样式和当前文档目录。
         const panel = vscode.window.createWebviewPanel(constants_1.PREVIEW_VIEW_TYPE, constants_1.PREVIEW_TITLE, vscode.ViewColumn.Beside, {
-            enableScripts: false,
+            enableScripts: true,
             localResourceRoots: [
                 vscode.Uri.joinPath(extensionUri, 'media'),
                 vscode.Uri.file(path.dirname(document.uri.fsPath))

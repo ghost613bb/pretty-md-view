@@ -40,7 +40,7 @@ export class PreviewPanel {
       PREVIEW_TITLE,
       vscode.ViewColumn.Beside,
       {
-        enableScripts: false,
+        enableScripts: true,
         localResourceRoots: [
           vscode.Uri.joinPath(extensionUri, 'media'),
           vscode.Uri.file(path.dirname(document.uri.fsPath))

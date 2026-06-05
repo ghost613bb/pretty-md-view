@@ -156,6 +156,7 @@ body {
 .markdown-body img {
   max-width: 100%;
   border-radius: 6px;
+  cursor: zoom-in;
 }
 
 .markdown-body hr {
@@ -164,4 +165,51 @@ body {
   margin: 24px 0;
   background: var(--pmv-border);
   border: 0;
+}
+
+body.is-previewing-image {
+  overflow: hidden;
+}
+
+.image-preview {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  background: rgb(10 16 14 / 82%);
+  backdrop-filter: blur(10px);
+}
+
+.image-preview[hidden] {
+  display: none;
+}
+
+.image-preview__image {
+  max-width: min(100%, 1100px);
+  max-height: 88vh;
+  border-radius: 10px;
+  box-shadow: 0 24px 70px rgb(0 0 0 / 38%);
+  cursor: zoom-out;
+}
+
+.image-preview__close {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgb(255 255 255 / 24%);
+  border-radius: 50%;
+  background: rgb(255 255 255 / 14%);
+  color: #ffffff;
+  font-size: 28px;
+  line-height: 30px;
+  cursor: pointer;
+}
+
+.image-preview__close:hover {
+  background: rgb(255 255 255 / 24%);
 }

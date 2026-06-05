@@ -64,6 +64,51 @@ function buildPreviewHtml(options) {
   <main class="markdown-body">
     ${options.bodyHtml}
   </main>
+  <div class="image-preview" data-image-preview hidden>
+    <button class="image-preview__close" type="button" aria-label="Close image preview">&times;</button>
+    <img class="image-preview__image" alt="">
+  </div>
+  <script nonce="${options.nonce}">
+    (() => {
+      const preview = document.querySelector('[data-image-preview]');
+      const previewImage = preview?.querySelector('.image-preview__image');
+      const closeButton = preview?.querySelector('.image-preview__close');
+
+      if (!preview || !previewImage || !closeButton) {
+        return;
+      }
+
+      const closePreview = () => {
+        preview.hidden = true;
+        previewImage.removeAttribute('src');
+        previewImage.removeAttribute('alt');
+        document.body.classList.remove('is-previewing-image');
+      };
+
+      document.querySelectorAll('.markdown-body img').forEach((image) => {
+        image.addEventListener('click', () => {
+          previewImage.src = image.currentSrc || image.src;
+          previewImage.alt = image.alt || 'Preview image';
+          preview.hidden = false;
+          document.body.classList.add('is-previewing-image');
+        });
+      });
+
+      preview.addEventListener('click', (event) => {
+        if (event.target === preview) {
+          closePreview();
+        }
+      });
+
+      closeButton.addEventListener('click', closePreview);
+
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && !preview.hidden) {
+          closePreview();
+        }
+      });
+    })();
+  </script>
 </body>
 </html>`;
 }
