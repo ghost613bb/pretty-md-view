@@ -78,6 +78,34 @@ function buildPreviewHtml(options) {
         return;
       }
 
+      const syncScroll = (ratio) => {
+        if (document.body.classList.contains('is-previewing-image')) {
+          return;
+        }
+
+        const scrollHeight = Math.max(
+          document.documentElement.scrollHeight,
+          document.body.scrollHeight
+        );
+        const maxScrollTop = Math.max(0, scrollHeight - window.innerHeight);
+        const nextScrollTop = maxScrollTop * Math.min(Math.max(ratio, 0), 1);
+
+        window.scrollTo({
+          top: nextScrollTop,
+          behavior: 'auto'
+        });
+      };
+
+      window.addEventListener('message', (event) => {
+        const message = event.data;
+
+        if (!message || message.type !== 'syncScroll' || typeof message.ratio !== 'number') {
+          return;
+        }
+
+        window.requestAnimationFrame(() => syncScroll(message.ratio));
+      });
+
       const closePreview = () => {
         preview.hidden = true;
         previewImage.removeAttribute('src');

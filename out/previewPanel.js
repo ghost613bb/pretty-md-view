@@ -85,6 +85,16 @@ class PreviewPanel {
         PreviewPanel.currentPanel.document = document;
         PreviewPanel.currentPanel.scheduleUpdate();
     }
+    static syncScrollWithEditor(editor) {
+        // 只同步当前正在预览的 Markdown 文档，避免其他编辑器滚动影响预览。
+        if (!PreviewPanel.currentPanel) {
+            return;
+        }
+        if (PreviewPanel.currentPanel.document.uri.toString() !== editor.document.uri.toString()) {
+            return;
+        }
+        PreviewPanel.currentPanel.syncScroll(editor);
+    }
     scheduleUpdate() {
         // 文档变化很频繁，等待 200ms 再渲染，减少连续输入时的重复刷新。
         if (this.disposed) {
@@ -117,6 +127,13 @@ class PreviewPanel {
             this.panel.webview.html = `<html><body><h1>Preview failed</h1><pre>${escapeHtml(message)}</pre></body></html>`;
         }
     }
+    syncScroll(editor) {
+        const ratio = getEditorScrollRatio(editor);
+        this.panel.webview.postMessage({
+            type: 'syncScroll',
+            ratio
+        });
+    }
     updateLocalResourceRoots() {
         // 切换预览文档后，本地图片允许访问的目录也要跟着切换到新文档所在目录。
         this.panel.webview.options = {
@@ -138,6 +155,22 @@ class PreviewPanel {
     }
 }
 exports.PreviewPanel = PreviewPanel;
+function getEditorScrollRatio(editor) {
+    const visibleRange = editor.visibleRanges[0];
+    if (!visibleRange) {
+        return 0;
+    }
+    const totalLines = editor.document.lineCount;
+    if (totalLines <= 1) {
+        return 0;
+    }
+    const visibleLineCount = Math.max(1, visibleRange.end.line - visibleRange.start.line + 1);
+    const maxTopLine = Math.max(1, totalLines - visibleLineCount);
+    return clamp(visibleRange.start.line / maxTopLine, 0, 1);
+}
+function clamp(value, min, max) {
+    return Math.min(Math.max(value, min), max);
+}
 function escapeHtml(value) {
     return value
         .replace(/&/g, '&amp;')

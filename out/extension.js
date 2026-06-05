@@ -55,7 +55,14 @@ function activate(context) {
         }
         previewPanel_1.PreviewPanel.updateIfPreviewing(event.document);
     });
-    context.subscriptions.push(openPreview, changeListener);
+    // Markdown 编辑器滚动时，将可视区域位置同步给右侧预览面板。
+    const visibleRangeListener = vscode.window.onDidChangeTextEditorVisibleRanges((event) => {
+        if (event.textEditor.document.languageId !== 'markdown') {
+            return;
+        }
+        previewPanel_1.PreviewPanel.syncScrollWithEditor(event.textEditor);
+    });
+    context.subscriptions.push(openPreview, changeListener, visibleRangeListener);
 }
 function deactivate() { }
 function getActiveMarkdownDocument() {
