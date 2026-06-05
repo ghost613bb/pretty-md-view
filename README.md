@@ -13,6 +13,21 @@ Pretty Markdown Preview 是一个轻量的 VS Code Markdown 美化预览插件�
 - 开发笔记
 - 本地 Markdown 草稿
 
+### 效果展示
+
+下面左侧是 Markdown 源文件，右侧是 Pretty Markdown Preview 渲染后的预览效果。
+
+<table>
+  <tr>
+    <td width="50%" align="center"><strong>Markdown 源文件</strong></td>
+    <td width="50%" align="center"><strong>预览效果</strong></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="./docs/images/showcase-markdown.png" alt="Markdown source screenshot"></td>
+    <td width="50%"><img src="./docs/images/showcase-preview.png" alt="Pretty Markdown Preview screenshot"></td>
+  </tr>
+</table>
+
 ### 主要功能
 
 - 在编辑器旁边打开美化 Markdown 预览。
@@ -110,6 +125,21 @@ It is useful for:
 - Technical documentation
 - Development notes
 - Local Markdown drafts
+
+### Preview
+
+The left side shows the Markdown source file. The right side shows the rendered Pretty Markdown Preview output.
+
+<table>
+  <tr>
+    <td width="50%" align="center"><strong>Markdown Source</strong></td>
+    <td width="50%" align="center"><strong>Rendered Preview</strong></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="./docs/images/showcase-markdown.png" alt="Markdown source screenshot"></td>
+    <td width="50%"><img src="./docs/images/showcase-preview.png" alt="Pretty Markdown Preview screenshot"></td>
+  </tr>
+</table>
 
 ### Features
 
