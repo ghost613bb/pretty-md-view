@@ -7,7 +7,9 @@
   "engines": {
     "vscode": "^1.90.0"
   },
-  "categories": ["Other"],
+  "categories": [
+    "Other"
+  ],
   "activationEvents": [
     "onCommand:prettyMdPreview.openPreview"
   ],
@@ -31,6 +33,8 @@
   },
   "scripts": {
     "compile": "tsc -p ./",
+    "vscode:prepublish": "npm run compile",
+    "package": "vsce package",
     "watch": "tsc -watch -p ./",
     "test": "vitest run",
     "test:watch": "vitest"
@@ -39,6 +43,7 @@
     "@types/markdown-it": "^14.1.2",
     "@types/node": "^20.14.10",
     "@types/vscode": "^1.90.0",
+    "@vscode/vsce": "^3.9.2",
     "typescript": "^5.5.4",
     "vitest": "^2.0.5"
   },

@@ -1,0 +1,11 @@
+.vscode/**
+.vscode-test/**
+.claude/**
+docs/**
+examples/**
+src/**
+test/**
+node_modules/.vite/**
+*.vsix
+vitest.config.ts
+tsconfig.json
