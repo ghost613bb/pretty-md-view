@@ -7,6 +7,7 @@ exports.renderMarkdown = renderMarkdown;
 const highlight_js_1 = __importDefault(require("highlight.js"));
 const markdown_it_1 = __importDefault(require("markdown-it"));
 const markdown_it_task_lists_1 = __importDefault(require("markdown-it-task-lists"));
+const SOURCE_LINE_ATTRIBUTE = 'data-pmv-source-line';
 const ALLOWED_HTML_TAGS = new Set([
     'a',
     'blockquote',
@@ -41,6 +42,7 @@ const ALLOWED_HTML_TAGS = new Set([
     'ul'
 ]);
 const ALLOWED_HTML_ATTRIBUTES = new Set([
+    SOURCE_LINE_ATTRIBUTE,
     'align',
     'alt',
     'checked',
@@ -77,8 +79,55 @@ const markdown = new markdown_it_1.default({
 })
     .enable('table')
     .use(markdown_it_task_lists_1.default, { enabled: false, label: true, labelAfter: true });
+markdown.core.ruler.push('pmv_source_line_anchors', (state) => {
+    state.tokens.forEach((token) => {
+        if (!token.map || !token.block || !token.tag || !isAnchorableToken(token.type, token.nesting)) {
+            return;
+        }
+        token.attrSet(SOURCE_LINE_ATTRIBUTE, String(token.map[0]));
+    });
+});
+const defaultFenceRenderer = markdown.renderer.rules.fence;
+const defaultCodeBlockRenderer = markdown.renderer.rules.code_block;
+const defaultHtmlBlockRenderer = markdown.renderer.rules.html_block;
+markdown.renderer.rules.fence = (tokens, index, options, env, self) => {
+    const rendered = defaultFenceRenderer
+        ? defaultFenceRenderer(tokens, index, options, env, self)
+        : self.renderToken(tokens, index, options);
+    return addSourceLineToPre(rendered, tokens[index].map?.[0]);
+};
+markdown.renderer.rules.code_block = (tokens, index, options, env, self) => {
+    const rendered = defaultCodeBlockRenderer
+        ? defaultCodeBlockRenderer(tokens, index, options, env, self)
+        : self.renderToken(tokens, index, options);
+    return addSourceLineToPre(rendered, tokens[index].map?.[0]);
+};
+markdown.renderer.rules.html_block = (tokens, index, options, env, self) => {
+    const rendered = defaultHtmlBlockRenderer
+        ? defaultHtmlBlockRenderer(tokens, index, options, env, self)
+        : tokens[index].content;
+    return `${buildSourceLineMarker(tokens[index].map?.[0])}${rendered}`;
+};
 function renderMarkdown(source) {
     return sanitizeHtml(markdown.render(source));
+}
+function isAnchorableToken(type, nesting) {
+    if (type === 'html_block' || type === 'fence' || type === 'code_block') {
+        return false;
+    }
+    return nesting === 1 || nesting === 0;
+}
+function addSourceLineToPre(html, sourceLine) {
+    if (sourceLine === undefined) {
+        return html;
+    }
+    return html.replace(/<pre(?=[\s>])/i, `<pre ${SOURCE_LINE_ATTRIBUTE}="${sourceLine}"`);
+}
+function buildSourceLineMarker(sourceLine) {
+    if (sourceLine === undefined) {
+        return '';
+    }
+    return `<span ${SOURCE_LINE_ATTRIBUTE}="${sourceLine}"></span>`;
 }
 function sanitizeHtml(html) {
     return html.replace(/<\/?([a-z][a-z0-9-]*)(\s[^<>]*)?>/gi, (match, tagName, attributes = '') => {
@@ -104,6 +153,9 @@ function sanitizeAttributes(attributes) {
             continue;
         }
         const attributeValue = attributeMatch[3] ?? attributeMatch[4] ?? attributeMatch[5] ?? '';
+        if (attributeName === SOURCE_LINE_ATTRIBUTE && !/^\d+$/.test(attributeValue)) {
+            continue;
+        }
         if ((attributeName === 'href' || attributeName === 'src') && !isSafeUri(attributeValue)) {
             continue;
         }

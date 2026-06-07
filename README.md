@@ -37,6 +37,7 @@ Pretty Markdown Preview 是一个轻量的 VS Code Markdown 美化预览插件�
 - 支持通过命令面板执行 `Pretty Markdown Preview: Open Preview` 打开预览。
 - 支持在 Markdown 编辑器右键菜单中打开预览。
 - 支持编辑 Markdown 后自动刷新当前预览。
+- 支持基于源码行锚点的编辑区到预览区同步滚动。
 - 支持标题、段落、分隔线、加粗、斜体、删除线和行内代码。
 - 支持有序列表、无序列表、嵌套列表和任务列表。
 - 支持引用块、链接、图片和代码块。
@@ -57,7 +58,6 @@ Pretty Markdown Preview 是一个轻量的 VS Code Markdown 美化预览插件�
 - 不支持 PlantUML、Graphviz 等图形 DSL 渲染。
 - 不支持导出 HTML、PDF 或图片。
 - 不支持主题切换、字体配置、字号配置或自定义 CSS。
-- 不支持编辑区与预览区同步滚动。
 - 不支持在预览中直接编辑 Markdown，也不是 Typora 式所见即所得编辑器。
 - 不支持替换或增强 VS Code 默认 Markdown Preview。
 - 不支持跨文件目录之外的本地资源访问，例如引用当前 Markdown 文件所在目录之外的图片。
@@ -168,6 +168,7 @@ This version only supports **local Markdown preview inside VS Code**. It current
 - Opening the preview from the Command Palette with `Pretty Markdown Preview: Open Preview`.
 - Opening the preview from the Markdown editor context menu.
 - Automatically refreshing the current preview after Markdown edits.
+- Supporting editor-to-preview synchronized scrolling based on source-line anchors.
 - Rendering headings, paragraphs, horizontal rules, bold text, italic text, strikethrough, and inline code.
 - Rendering ordered lists, unordered lists, nested lists, and task lists.
 - Rendering blockquotes, links, images, and fenced code blocks.
@@ -188,7 +189,6 @@ This version does not support:
 - PlantUML, Graphviz, or other diagram DSL rendering.
 - HTML, PDF, or image export.
 - Theme switching, font configuration, font-size configuration, or custom CSS.
-- Synchronized scrolling between the editor and preview.
 - Editing Markdown directly inside the preview; this is not a Typora-style WYSIWYG editor.
 - Replacing or enhancing VS Code's built-in Markdown Preview.
 - Accessing local resources outside the current Markdown file directory, such as images in unrelated folders.

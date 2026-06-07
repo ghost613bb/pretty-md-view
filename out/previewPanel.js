@@ -128,10 +128,9 @@ class PreviewPanel {
         }
     }
     syncScroll(editor) {
-        const ratio = getEditorScrollRatio(editor);
         this.panel.webview.postMessage({
             type: 'syncScroll',
-            ratio
+            ...getEditorScrollSyncState(editor)
         });
     }
     updateLocalResourceRoots() {
@@ -155,18 +154,24 @@ class PreviewPanel {
     }
 }
 exports.PreviewPanel = PreviewPanel;
-function getEditorScrollRatio(editor) {
+function getEditorScrollSyncState(editor) {
     const visibleRange = editor.visibleRanges[0];
-    if (!visibleRange) {
-        return 0;
-    }
     const totalLines = editor.document.lineCount;
-    if (totalLines <= 1) {
-        return 0;
+    const maxLine = Math.max(0, totalLines - 1);
+    if (!visibleRange || totalLines <= 1) {
+        return {
+            sourceLine: 0,
+            maxLine,
+            fallbackRatio: 0
+        };
     }
     const visibleLineCount = Math.max(1, visibleRange.end.line - visibleRange.start.line + 1);
     const maxTopLine = Math.max(1, totalLines - visibleLineCount);
-    return clamp(visibleRange.start.line / maxTopLine, 0, 1);
+    return {
+        sourceLine: clamp(visibleRange.start.line, 0, maxLine),
+        maxLine,
+        fallbackRatio: clamp(visibleRange.start.line / maxTopLine, 0, 1)
+    };
 }
 function clamp(value, min, max) {
     return Math.min(Math.max(value, min), max);

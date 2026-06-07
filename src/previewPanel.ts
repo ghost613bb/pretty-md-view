@@ -115,11 +115,9 @@ export class PreviewPanel {
   }
 
   private syncScroll(editor: vscode.TextEditor): void {
-    const ratio = getEditorScrollRatio(editor);
-
     this.panel.webview.postMessage({
       type: 'syncScroll',
-      ratio
+      ...getEditorScrollSyncState(editor)
     });
   }
 
@@ -146,23 +144,31 @@ export class PreviewPanel {
   }
 }
 
-function getEditorScrollRatio(editor: vscode.TextEditor): number {
+function getEditorScrollSyncState(editor: vscode.TextEditor): {
+  sourceLine: number;
+  maxLine: number;
+  fallbackRatio: number;
+} {
   const visibleRange = editor.visibleRanges[0];
-
-  if (!visibleRange) {
-    return 0;
-  }
-
   const totalLines = editor.document.lineCount;
+  const maxLine = Math.max(0, totalLines - 1);
 
-  if (totalLines <= 1) {
-    return 0;
+  if (!visibleRange || totalLines <= 1) {
+    return {
+      sourceLine: 0,
+      maxLine,
+      fallbackRatio: 0
+    };
   }
 
   const visibleLineCount = Math.max(1, visibleRange.end.line - visibleRange.start.line + 1);
   const maxTopLine = Math.max(1, totalLines - visibleLineCount);
 
-  return clamp(visibleRange.start.line / maxTopLine, 0, 1);
+  return {
+    sourceLine: clamp(visibleRange.start.line, 0, maxLine),
+    maxLine,
+    fallbackRatio: clamp(visibleRange.start.line / maxTopLine, 0, 1)
+  };
 }
 
 function clamp(value: number, min: number, max: number): number {
