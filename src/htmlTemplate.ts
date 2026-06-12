@@ -1,10 +1,17 @@
 import * as vscode from 'vscode';
 
+export interface PreviewScrollSyncState {
+  sourceLine: number;
+  maxLine: number;
+  fallbackRatio: number;
+}
+
 export interface HtmlTemplateOptions {
   webview: vscode.Webview;
   extensionUri: vscode.Uri;
   bodyHtml: string;
   nonce: string;
+  initialScrollSyncState?: PreviewScrollSyncState;
 }
 
 export function buildPreviewHtml(options: HtmlTemplateOptions): string {
@@ -57,6 +64,9 @@ export function buildPreviewHtml(options: HtmlTemplateOptions): string {
       const zoomInButton = preview?.querySelector('[data-image-zoom-in]');
       const zoomOutButton = preview?.querySelector('[data-image-zoom-out]');
       const zoomResetButton = preview?.querySelector('[data-image-zoom-reset]');
+      const initialSyncMessage = ${options.initialScrollSyncState
+        ? JSON.stringify({ type: 'syncScroll', ...options.initialScrollSyncState })
+        : 'undefined'};
       let lastSyncMessage;
       let imageScale = 1;
       let imageOffsetX = 0;
@@ -190,7 +200,15 @@ export function buildPreviewHtml(options: HtmlTemplateOptions): string {
         scheduleLastSync();
       });
 
+      if (isSyncScrollMessage(initialSyncMessage)) {
+        lastSyncMessage = initialSyncMessage;
+        scheduleLastSync();
+      }
+
       window.addEventListener('resize', scheduleLastSync);
+
+      const vscodeApi = typeof acquireVsCodeApi === 'function' ? acquireVsCodeApi() : undefined;
+      vscodeApi?.postMessage({ type: 'previewReady' });
 
       const updateImageTransform = () => {
         previewImage.style.setProperty('--pmv-image-scale', String(imageScale));

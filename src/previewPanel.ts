@@ -2,7 +2,7 @@ import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { rewriteMarkdownImageSources } from './assetResolver';
 import { PREVIEW_TITLE, PREVIEW_VIEW_TYPE } from './constants';
-import { buildPreviewHtml, createNonce } from './htmlTemplate';
+import { buildPreviewHtml, createNonce, type PreviewScrollSyncState } from './htmlTemplate';
 import { renderMarkdown } from './markdownRenderer';
 
 export class PreviewPanel {
@@ -13,6 +13,7 @@ export class PreviewPanel {
   private readonly extensionUri: vscode.Uri;
   private document: vscode.TextDocument;
   private refreshTimer: NodeJS.Timeout | undefined;
+  private lastScrollSyncState: PreviewScrollSyncState | undefined;
   private disposed = false;
 
   private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri, document: vscode.TextDocument) {
@@ -21,6 +22,8 @@ export class PreviewPanel {
     this.document = document;
 
     this.panel.onDidDispose(() => this.dispose());
+    this.panel.webview.onDidReceiveMessage((message) => this.handleWebviewMessage(message));
+    this.rememberVisibleEditorScroll(document);
     this.updateNow();
   }
 
@@ -30,6 +33,7 @@ export class PreviewPanel {
       PreviewPanel.currentPanel.document = document;
       PreviewPanel.currentPanel.updateLocalResourceRoots();
       PreviewPanel.currentPanel.panel.reveal(vscode.ViewColumn.Beside);
+      PreviewPanel.currentPanel.rememberVisibleEditorScroll(document);
       PreviewPanel.currentPanel.scheduleUpdate();
       return;
     }
@@ -62,6 +66,7 @@ export class PreviewPanel {
     }
 
     PreviewPanel.currentPanel.document = document;
+    PreviewPanel.currentPanel.rememberVisibleEditorScroll(document);
     PreviewPanel.currentPanel.scheduleUpdate();
   }
 
@@ -106,7 +111,8 @@ export class PreviewPanel {
         webview: this.panel.webview,
         extensionUri: this.extensionUri,
         bodyHtml,
-        nonce: createNonce()
+        nonce: createNonce(),
+        initialScrollSyncState: this.lastScrollSyncState
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -115,10 +121,49 @@ export class PreviewPanel {
   }
 
   private syncScroll(editor: vscode.TextEditor): void {
+    this.rememberEditorScroll(editor);
     this.panel.webview.postMessage({
       type: 'syncScroll',
-      ...getEditorScrollSyncState(editor)
+      ...this.lastScrollSyncState
     });
+  }
+
+  private rememberVisibleEditorScroll(document: vscode.TextDocument): void {
+    const editor = this.getVisibleEditor(document);
+
+    if (!editor) {
+      return;
+    }
+
+    this.rememberEditorScroll(editor);
+  }
+
+  private rememberEditorScroll(editor: vscode.TextEditor): void {
+    this.lastScrollSyncState = getEditorScrollSyncState(editor);
+  }
+
+  private getVisibleEditor(document: vscode.TextDocument): vscode.TextEditor | undefined {
+    return vscode.window.visibleTextEditors.find(
+      (visibleEditor) => visibleEditor.document.uri.toString() === document.uri.toString()
+    );
+  }
+
+  private handleWebviewMessage(message: unknown): void {
+    if (!isPreviewReadyMessage(message)) {
+      return;
+    }
+
+    this.syncVisibleEditorScroll();
+  }
+
+  private syncVisibleEditorScroll(): void {
+    const editor = this.getVisibleEditor(this.document);
+
+    if (!editor) {
+      return;
+    }
+
+    this.syncScroll(editor);
   }
 
   private updateLocalResourceRoots(): void {
@@ -169,6 +214,10 @@ function getEditorScrollSyncState(editor: vscode.TextEditor): {
     maxLine,
     fallbackRatio: clamp(visibleRange.start.line / maxTopLine, 0, 1)
   };
+}
+
+function isPreviewReadyMessage(message: unknown): message is { type: 'previewReady' } {
+  return typeof message === 'object' && message !== null && 'type' in message && message.type === 'previewReady';
 }
 
 function clamp(value: number, min: number, max: number): number {
