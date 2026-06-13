@@ -37,10 +37,13 @@ Pretty Markdown Preview 是一个轻量的 VS Code Markdown 美化预览插件�
 - 支持通过命令面板执行 `Pretty Markdown Preview: Open Preview` 打开预览。
 - 支持在 Markdown 编辑器右键菜单中打开预览。
 - 支持编辑 Markdown 后自动刷新当前预览。
-- 支持基于源码行锚点的编辑区到预览区同步滚动。
+- 支持基于源码行锚点的编辑区与预览区双向同步滚动。
 - 支持标题、段落、分隔线、加粗、斜体、删除线和行内代码。
 - 支持有序列表、无序列表、嵌套列表和任务列表。
 - 支持引用块、链接、图片和代码块。
+- 支持目录或站内锚点链接跳转到对应位置，例如 `[Q1](#q1)`。
+- 支持为 Markdown 标题自动生成稳定锚点 id，并兼容重复标题自动去重。
+- 支持保留安全白名单内原生 HTML 的 `id` 属性，兼容 `<a id="q1"></a>` 这类自定义锚点。
 - 支持 Markdown 管道表格。
 - 支持安全白名单内的原生 HTML 标签，例如 `table`、`tr`、`td`、`th`、`img`、`a`、`strong`、`span` 等。
 - 支持原生 HTML 表格中嵌入图片。
@@ -68,18 +71,23 @@ Pretty Markdown Preview 是一个轻量的 VS Code Markdown 美化预览插件�
 
 ### 安装使用
 
-如果你已经有打包好的 `.vsix` 文件，可以直接安装：
+如果你是**普通用户**，当前项目还没有上架 VS Code Marketplace，因此**不需要自己构建源码**。
 
-```bash
-code --install-extension pretty-md-view-0.0.1.vsix
-```
-
-也可以在 VS Code 里安装：
+你只需要先拿到开发者提供的 `.vsix` 安装包，然后按下面步骤安装：
 
 1. 打开 VS Code。
 2. 按 `Cmd + Shift + P`。
 3. 输入 `Extensions: Install from VSIX...`。
-4. 选择 `pretty-md-view-0.0.1.vsix`。
+4. 选择下载好的 `pretty-md-view-0.0.5.vsix`。
+
+如果你是**开发者**，或者希望从源码本地打包安装，请先执行：
+
+```bash
+npm install
+npm run package
+```
+
+打包完成后，会生成一个 `.vsix` 文件；再按照上面的安装步骤安装即可。
 
 ### 使用方式
 
@@ -87,6 +95,7 @@ code --install-extension pretty-md-view-0.0.1.vsix
 2. 按 `Cmd + Shift + P` 打开命令面板。
 3. 输入并执行 `Pretty Markdown Preview: Open Preview`。
 4. 右侧会打开美化后的 Markdown 预览。
+5. 如果文档里有目录链接或站内锚点链接，例如 `[Q1](#q1)`，点击后会跳转到预览中的对应部分。
 
 你也可以在 Markdown 编辑器里右键，选择 `Pretty Markdown Preview: Open Preview`。
 
@@ -114,21 +123,6 @@ npm run compile
 5. 在新窗口中打开 `examples/sample.md`。
 6. 执行 `Pretty Markdown Preview: Open Preview`。
 
-### 打包插件
-
-生成本地 VSIX 安装包：
-
-```bash
-npm run package
-```
-
-打包成功后会生成类似这样的文件：
-
-```text
-pretty-md-view-0.0.1.vsix
-```
-
-这个 `.vsix` 文件可以发给别人安装，也可以自己本地安装使用。
 
 
 ## English
@@ -168,10 +162,13 @@ This version only supports **local Markdown preview inside VS Code**. It current
 - Opening the preview from the Command Palette with `Pretty Markdown Preview: Open Preview`.
 - Opening the preview from the Markdown editor context menu.
 - Automatically refreshing the current preview after Markdown edits.
-- Supporting editor-to-preview synchronized scrolling based on source-line anchors.
+- Supporting bidirectional synchronized scrolling between the editor and preview based on source-line anchors.
 - Rendering headings, paragraphs, horizontal rules, bold text, italic text, strikethrough, and inline code.
 - Rendering ordered lists, unordered lists, nested lists, and task lists.
 - Rendering blockquotes, links, images, and fenced code blocks.
+- Supporting in-document TOC or anchor links that jump to the matching section, such as `[Q1](#q1)`.
+- Automatically generating stable anchor ids for Markdown headings, including duplicate-heading deduplication.
+- Preserving allowlisted raw HTML `id` attributes so custom anchors like `<a id="q1"></a>` keep working.
 - Rendering Markdown pipe tables.
 - Rendering allowlisted raw HTML tags, such as `table`, `tr`, `td`, `th`, `img`, `a`, `strong`, and `span`.
 - Rendering images inside raw HTML tables.
@@ -199,18 +196,31 @@ This version does not support:
 
 ### Install
 
-If you already have the packaged `.vsix` file, install it with:
+If you are a **regular user**, this project is not yet published on the VS Code Marketplace, so you do **not** need to build it from source yourself.
+
+You only need a `.vsix` package provided by the developer, for example from GitHub Releases or direct distribution, and then install it with one of the following methods.
+
+Install from the command line:
 
 ```bash
-code --install-extension pretty-md-view-0.0.1.vsix
+code --install-extension pretty-md-view-0.0.5.vsix
 ```
 
-You can also install it from VS Code:
+Or install it from VS Code:
 
 1. Open VS Code.
 2. Press `Cmd + Shift + P`.
 3. Run `Extensions: Install from VSIX...`.
-4. Select `pretty-md-view-0.0.1.vsix`.
+4. Select the downloaded `pretty-md-view-0.0.5.vsix` file.
+
+If you are a **developer**, or want to package the extension locally from source, run:
+
+```bash
+npm install
+npm run package
+```
+
+After packaging, VS Code generates a `.vsix` file that you can install with the same steps above.
 
 ### Usage
 
@@ -218,6 +228,7 @@ You can also install it from VS Code:
 2. Open the Command Palette with `Cmd + Shift + P`.
 3. Run `Pretty Markdown Preview: Open Preview`.
 4. A prettier Markdown preview opens beside the editor.
+5. If the document contains a TOC link or in-document anchor link such as `[Q1](#q1)`, clicking it jumps to the matching section in the preview.
 
 You can also right-click inside a Markdown editor and choose `Pretty Markdown Preview: Open Preview`.
 
@@ -256,7 +267,7 @@ npm run package
 The command generates a file like:
 
 ```text
-pretty-md-view-0.0.1.vsix
+pretty-md-view-0.0.5.vsix
 ```
 
 You can share this `.vsix` file with others or install it locally.
