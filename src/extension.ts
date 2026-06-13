@@ -33,7 +33,15 @@ export function activate(context: vscode.ExtensionContext): void {
     PreviewPanel.syncScrollWithEditor(event.textEditor);
   });
 
-  context.subscriptions.push(openPreview, changeListener, visibleRangeListener);
+  const activeEditorListener = vscode.window.onDidChangeActiveTextEditor((editor) => {
+    if (!editor || editor.document.languageId !== 'markdown') {
+      return;
+    }
+
+    PreviewPanel.restoreScrollForEditor(editor);
+  });
+
+  context.subscriptions.push(openPreview, changeListener, visibleRangeListener, activeEditorListener);
 }
 
 export function deactivate(): void {}

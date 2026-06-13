@@ -2,8 +2,16 @@ import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { rewriteMarkdownImageSources } from './assetResolver';
 import { PREVIEW_TITLE, PREVIEW_VIEW_TYPE } from './constants';
-import { buildPreviewHtml, createNonce, type PreviewScrollSyncState } from './htmlTemplate';
+import { buildPreviewHtml, createNonce } from './htmlTemplate';
 import { renderMarkdown } from './markdownRenderer';
+import {
+  getEditorScrollSyncState,
+  type PendingEditorScrollSync,
+  type PreviewScrollSyncState,
+  shouldSuppressPreviewDrivenEditorSync
+} from './scrollSync';
+
+const PREVIEW_DRIVEN_EDITOR_SYNC_WINDOW_MS = 450;
 
 export class PreviewPanel {
   // 当前只维护一个美化预览面板：重复执行命令时复用它，而不是打开多个窗口。
@@ -14,6 +22,7 @@ export class PreviewPanel {
   private document: vscode.TextDocument;
   private refreshTimer: NodeJS.Timeout | undefined;
   private lastScrollSyncState: PreviewScrollSyncState | undefined;
+  private pendingEditorScrollSync: PendingEditorScrollSync | undefined;
   private disposed = false;
 
   private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri, document: vscode.TextDocument) {
@@ -84,6 +93,18 @@ export class PreviewPanel {
     PreviewPanel.currentPanel.syncScroll(editor);
   }
 
+  static restoreScrollForEditor(editor: vscode.TextEditor): void {
+    if (!PreviewPanel.currentPanel) {
+      return;
+    }
+
+    if (PreviewPanel.currentPanel.document.uri.toString() !== editor.document.uri.toString()) {
+      return;
+    }
+
+    PreviewPanel.currentPanel.restoreScrollStateToEditor(editor);
+  }
+
   private scheduleUpdate(): void {
     // 文档变化很频繁，等待 200ms 再渲染，减少连续输入时的重复刷新。
     if (this.disposed) {
@@ -122,11 +143,12 @@ export class PreviewPanel {
   }
 
   private syncScroll(editor: vscode.TextEditor): void {
+    if (this.shouldSuppressEditorScrollSync(editor)) {
+      return;
+    }
+
     this.rememberEditorScroll(editor);
-    this.panel.webview.postMessage({
-      type: 'syncScroll',
-      ...this.lastScrollSyncState
-    });
+    this.postScrollSyncState();
   }
 
   private rememberVisibleEditorScroll(document: vscode.TextDocument): void {
@@ -150,14 +172,68 @@ export class PreviewPanel {
   }
 
   private handleWebviewMessage(message: unknown): void {
-    if (!isPreviewReadyMessage(message)) {
+    if (isPreviewReadyMessage(message)) {
+      this.syncVisibleEditorScroll();
       return;
     }
 
-    this.syncVisibleEditorScroll();
+    if (!isPreviewScrollMessage(message)) {
+      return;
+    }
+
+    this.applyPreviewScrollToEditor(message);
+  }
+
+  private applyPreviewScrollToEditor(state: PreviewScrollSyncState): void {
+    this.lastScrollSyncState = state;
+
+    const editor = this.getVisibleEditor(this.document);
+
+    if (!editor) {
+      return;
+    }
+
+    this.restoreScrollStateToEditor(editor);
+  }
+
+  private restoreScrollStateToEditor(editor: vscode.TextEditor): void {
+    if (!this.lastScrollSyncState) {
+      return;
+    }
+
+    const targetLine = clamp(this.lastScrollSyncState.sourceLine, 0, Math.max(0, editor.document.lineCount - 1));
+    const targetPosition = new vscode.Position(targetLine, 0);
+
+    this.pendingEditorScrollSync = {
+      targetLine,
+      expiresAt: Date.now() + PREVIEW_DRIVEN_EDITOR_SYNC_WINDOW_MS
+    };
+
+    editor.revealRange(new vscode.Range(targetPosition, targetPosition), vscode.TextEditorRevealType.AtTop);
+  }
+
+  private shouldSuppressEditorScrollSync(editor: vscode.TextEditor): boolean {
+    if (!this.pendingEditorScrollSync) {
+      return false;
+    }
+
+    const nextState = getEditorScrollSyncState(editor);
+    this.lastScrollSyncState = nextState;
+
+    if (!shouldSuppressPreviewDrivenEditorSync(this.pendingEditorScrollSync)) {
+      this.pendingEditorScrollSync = undefined;
+      return false;
+    }
+
+    return true;
   }
 
   private syncVisibleEditorScroll(): void {
+    if (this.lastScrollSyncState) {
+      this.postScrollSyncState();
+      return;
+    }
+
     const editor = this.getVisibleEditor(this.document);
 
     if (!editor) {
@@ -165,6 +241,17 @@ export class PreviewPanel {
     }
 
     this.syncScroll(editor);
+  }
+
+  private postScrollSyncState(): void {
+    if (!this.lastScrollSyncState) {
+      return;
+    }
+
+    this.panel.webview.postMessage({
+      type: 'syncScroll',
+      ...this.lastScrollSyncState
+    });
   }
 
   private updateLocalResourceRoots(): void {
@@ -182,6 +269,7 @@ export class PreviewPanel {
     // 面板关闭后清理静态引用和未触发的刷新定时器，下次命令可以重新创建。
     this.disposed = true;
     PreviewPanel.currentPanel = undefined;
+    this.pendingEditorScrollSync = undefined;
 
     if (this.refreshTimer) {
       clearTimeout(this.refreshTimer);
@@ -190,35 +278,23 @@ export class PreviewPanel {
   }
 }
 
-function getEditorScrollSyncState(editor: vscode.TextEditor): {
-  sourceLine: number;
-  maxLine: number;
-  fallbackRatio: number;
-} {
-  const visibleRange = editor.visibleRanges[0];
-  const totalLines = editor.document.lineCount;
-  const maxLine = Math.max(0, totalLines - 1);
-
-  if (!visibleRange || totalLines <= 1) {
-    return {
-      sourceLine: 0,
-      maxLine,
-      fallbackRatio: 0
-    };
-  }
-
-  const visibleLineCount = Math.max(1, visibleRange.end.line - visibleRange.start.line + 1);
-  const maxTopLine = Math.max(1, totalLines - visibleLineCount);
-
-  return {
-    sourceLine: clamp(visibleRange.start.line, 0, maxLine),
-    maxLine,
-    fallbackRatio: clamp(visibleRange.start.line / maxTopLine, 0, 1)
-  };
-}
-
 function isPreviewReadyMessage(message: unknown): message is { type: 'previewReady' } {
   return typeof message === 'object' && message !== null && 'type' in message && message.type === 'previewReady';
+}
+
+function isPreviewScrollMessage(message: unknown): message is { type: 'previewScroll' } & PreviewScrollSyncState {
+  return (
+    typeof message === 'object' &&
+    message !== null &&
+    'type' in message &&
+    message.type === 'previewScroll' &&
+    'sourceLine' in message &&
+    typeof message.sourceLine === 'number' &&
+    'maxLine' in message &&
+    typeof message.maxLine === 'number' &&
+    'fallbackRatio' in message &&
+    typeof message.fallbackRatio === 'number'
+  );
 }
 
 function clamp(value: number, min: number, max: number): number {

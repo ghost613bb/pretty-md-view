@@ -1,10 +1,5 @@
 import * as vscode from 'vscode';
-
-export interface PreviewScrollSyncState {
-  sourceLine: number;
-  maxLine: number;
-  fallbackRatio: number;
-}
+import type { PreviewScrollSyncState } from './scrollSync';
 
 export interface HtmlTemplateOptions {
   webview: vscode.Webview;
@@ -67,7 +62,11 @@ export function buildPreviewHtml(options: HtmlTemplateOptions): string {
       const initialSyncMessage = ${options.initialScrollSyncState
         ? JSON.stringify({ type: 'syncScroll', ...options.initialScrollSyncState })
         : 'undefined'};
-      let lastSyncMessage;
+      const vscodeApi = typeof acquireVsCodeApi === 'function' ? acquireVsCodeApi() : undefined;
+      let lastSharedSyncState;
+      let lastReportedPreviewScrollState;
+      let previewScrollFrame = 0;
+      let suppressPreviewScrollUntil = 0;
       let imageScale = 1;
       let imageOffsetX = 0;
       let imageOffsetY = 0;
@@ -92,10 +91,12 @@ export function buildPreviewHtml(options: HtmlTemplateOptions): string {
         return Math.max(0, scrollHeight - window.innerHeight);
       };
 
-      const getFallbackScrollTop = (message) => {
+      const getFallbackRatio = (message) => {
         const fallbackRatio = typeof message.fallbackRatio === 'number' ? message.fallbackRatio : message.ratio;
-        return getMaxScrollTop() * clamp(typeof fallbackRatio === 'number' ? fallbackRatio : 0, 0, 1);
+        return clamp(typeof fallbackRatio === 'number' ? fallbackRatio : 0, 0, 1);
       };
+
+      const getFallbackScrollTop = (message) => getMaxScrollTop() * getFallbackRatio(message);
 
       const getSourceLineAnchors = () => {
         const anchors = Array.from(document.querySelectorAll('[data-pmv-source-line]'))
@@ -119,12 +120,12 @@ export function buildPreviewHtml(options: HtmlTemplateOptions): string {
         }, []);
       };
 
-      const interpolate = (fromTop, toTop, progress) => {
-        return fromTop + (toTop - fromTop) * clamp(progress, 0, 1);
+      const interpolate = (fromValue, toValue, progress) => {
+        return fromValue + (toValue - fromValue) * clamp(progress, 0, 1);
       };
 
       const calculateAnchorScrollTop = (message) => {
-        const sourceLine = message.sourceLine;
+        const sourceLine = clamp(message.sourceLine, 0, Math.max(0, message.maxLine));
         const maxLine = typeof message.maxLine === 'number' ? Math.max(0, message.maxLine) : sourceLine;
         const maxScrollTop = getMaxScrollTop();
         const anchors = getSourceLineAnchors();
@@ -157,16 +158,101 @@ export function buildPreviewHtml(options: HtmlTemplateOptions): string {
         return interpolate(lastAnchor.top, maxScrollTop, progress);
       };
 
+      const calculateSourceLineFromScrollTop = (scrollTop, maxLine) => {
+        const normalizedMaxLine = Math.max(0, maxLine);
+        const maxScrollTop = getMaxScrollTop();
+        const anchors = getSourceLineAnchors();
+
+        if (anchors.length === 0 || maxScrollTop <= 0) {
+          return Math.round(getFallbackRatio({ fallbackRatio: maxScrollTop <= 0 ? 0 : scrollTop / maxScrollTop }) * normalizedMaxLine);
+        }
+
+        const firstAnchor = anchors[0];
+        const lastAnchor = anchors[anchors.length - 1];
+
+        if (scrollTop <= firstAnchor.top) {
+          const progress = firstAnchor.top <= 0 ? 0 : scrollTop / firstAnchor.top;
+          return Math.round(interpolate(0, firstAnchor.line, progress));
+        }
+
+        for (let index = 0; index < anchors.length - 1; index += 1) {
+          const previousAnchor = anchors[index];
+          const nextAnchor = anchors[index + 1];
+
+          if (scrollTop >= previousAnchor.top && scrollTop <= nextAnchor.top) {
+            const topDistance = Math.max(1, nextAnchor.top - previousAnchor.top);
+            const progress = (scrollTop - previousAnchor.top) / topDistance;
+            return Math.round(interpolate(previousAnchor.line, nextAnchor.line, progress));
+          }
+        }
+
+        const remainingScrollTop = Math.max(1, maxScrollTop - lastAnchor.top);
+        const progress = (scrollTop - lastAnchor.top) / remainingScrollTop;
+        return Math.round(interpolate(lastAnchor.line, normalizedMaxLine, progress));
+      };
+
+      const isEquivalentSyncState = (left, right) => {
+        if (!left || !right) {
+          return false;
+        }
+
+        return left.sourceLine === right.sourceLine && left.maxLine === right.maxLine;
+      };
+
+      const buildPreviewScrollState = () => {
+        const maxLine = Math.max(0, lastSharedSyncState?.maxLine ?? 0);
+        const maxScrollTop = getMaxScrollTop();
+        const fallbackRatio = maxScrollTop <= 0 ? 0 : clamp(window.scrollY / maxScrollTop, 0, 1);
+
+        return {
+          sourceLine: clamp(calculateSourceLineFromScrollTop(window.scrollY, maxLine), 0, maxLine),
+          maxLine,
+          fallbackRatio
+        };
+      };
+
+      const postPreviewScrollState = () => {
+        if (!vscodeApi || !lastSharedSyncState) {
+          return;
+        }
+
+        const nextState = buildPreviewScrollState();
+
+        if (isEquivalentSyncState(nextState, lastReportedPreviewScrollState)) {
+          return;
+        }
+
+        lastSharedSyncState = nextState;
+        lastReportedPreviewScrollState = nextState;
+        vscodeApi.postMessage({
+          type: 'previewScroll',
+          ...nextState
+        });
+      };
+
       const syncScroll = (message) => {
         if (document.body.classList.contains('is-previewing-image')) {
           return;
         }
 
+        const normalizedState = {
+          sourceLine: clamp(Number.isFinite(message.sourceLine) ? message.sourceLine : 0, 0, Math.max(0, message.maxLine ?? 0)),
+          maxLine: Math.max(0, message.maxLine ?? 0),
+          fallbackRatio: getFallbackRatio(message)
+        };
+
+        if (isEquivalentSyncState(normalizedState, buildPreviewScrollState())) {
+          lastSharedSyncState = normalizedState;
+          return;
+        }
+
         const maxScrollTop = getMaxScrollTop();
         const nextScrollTop = Number.isFinite(message.sourceLine)
-          ? calculateAnchorScrollTop(message)
-          : getFallbackScrollTop(message);
+          ? calculateAnchorScrollTop(normalizedState)
+          : getFallbackScrollTop(normalizedState);
 
+        lastSharedSyncState = normalizedState;
+        suppressPreviewScrollUntil = Date.now() + 120;
         window.scrollTo({
           top: clamp(nextScrollTop, 0, maxScrollTop),
           behavior: 'auto'
@@ -182,11 +268,31 @@ export function buildPreviewHtml(options: HtmlTemplateOptions): string {
       };
 
       const scheduleLastSync = () => {
-        if (!lastSyncMessage) {
+        if (!lastSharedSyncState) {
           return;
         }
 
-        window.requestAnimationFrame(() => syncScroll(lastSyncMessage));
+        window.requestAnimationFrame(() => syncScroll(lastSharedSyncState));
+      };
+
+      const schedulePreviewScrollReport = () => {
+        if (!vscodeApi || previewScrollFrame !== 0) {
+          return;
+        }
+
+        previewScrollFrame = window.requestAnimationFrame(() => {
+          previewScrollFrame = 0;
+
+          if (!lastSharedSyncState || document.body.classList.contains('is-previewing-image')) {
+            return;
+          }
+
+          if (Date.now() <= suppressPreviewScrollUntil) {
+            return;
+          }
+
+          postPreviewScrollState();
+        });
       };
 
       window.addEventListener('message', (event) => {
@@ -196,18 +302,25 @@ export function buildPreviewHtml(options: HtmlTemplateOptions): string {
           return;
         }
 
-        lastSyncMessage = message;
+        lastSharedSyncState = {
+          sourceLine: clamp(Number.isFinite(message.sourceLine) ? message.sourceLine : 0, 0, Math.max(0, message.maxLine ?? 0)),
+          maxLine: Math.max(0, message.maxLine ?? 0),
+          fallbackRatio: getFallbackRatio(message)
+        };
         scheduleLastSync();
       });
 
       if (isSyncScrollMessage(initialSyncMessage)) {
-        lastSyncMessage = initialSyncMessage;
+        lastSharedSyncState = {
+          sourceLine: clamp(Number.isFinite(initialSyncMessage.sourceLine) ? initialSyncMessage.sourceLine : 0, 0, Math.max(0, initialSyncMessage.maxLine ?? 0)),
+          maxLine: Math.max(0, initialSyncMessage.maxLine ?? 0),
+          fallbackRatio: getFallbackRatio(initialSyncMessage)
+        };
         scheduleLastSync();
       }
 
+      window.addEventListener('scroll', schedulePreviewScrollReport, { passive: true });
       window.addEventListener('resize', scheduleLastSync);
-
-      const vscodeApi = typeof acquireVsCodeApi === 'function' ? acquireVsCodeApi() : undefined;
       vscodeApi?.postMessage({ type: 'previewReady' });
 
       const updateImageTransform = () => {
@@ -246,6 +359,7 @@ export function buildPreviewHtml(options: HtmlTemplateOptions): string {
         resetImageTransform();
         previewImage.classList.remove('is-dragging');
         document.body.classList.remove('is-previewing-image');
+        scheduleLastSync();
       };
 
       document.querySelectorAll('.markdown-body img').forEach((image) => {
