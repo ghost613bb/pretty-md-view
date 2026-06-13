@@ -23,7 +23,16 @@ export interface PreviewScrollSyncState {
 export interface PendingEditorScrollSync {
   targetLine: number;
   expiresAt: number;
+  toleranceLines: number;
 }
+
+export interface ScrollSyncToleranceOptions {
+  lineTolerance?: number;
+  fallbackRatioTolerance?: number;
+}
+
+const DEFAULT_LINE_TOLERANCE = 1;
+const DEFAULT_FALLBACK_RATIO_TOLERANCE = 0.02;
 
 export function getEditorScrollSyncState(editor: EditorLike | vscode.TextEditor): PreviewScrollSyncState {
   const visibleRange = editor.visibleRanges[0];
@@ -48,11 +57,34 @@ export function getEditorScrollSyncState(editor: EditorLike | vscode.TextEditor)
   };
 }
 
+export function isScrollSyncStateNear(
+  left: PreviewScrollSyncState | undefined,
+  right: PreviewScrollSyncState | undefined,
+  options: ScrollSyncToleranceOptions = {}
+): boolean {
+  if (!left || !right) {
+    return false;
+  }
+
+  const lineTolerance = options.lineTolerance ?? DEFAULT_LINE_TOLERANCE;
+  const fallbackRatioTolerance = options.fallbackRatioTolerance ?? DEFAULT_FALLBACK_RATIO_TOLERANCE;
+
+  return (
+    Math.abs(left.sourceLine - right.sourceLine) <= lineTolerance &&
+    Math.abs(left.fallbackRatio - right.fallbackRatio) <= fallbackRatioTolerance
+  );
+}
+
 export function shouldSuppressPreviewDrivenEditorSync(
   pendingSync: PendingEditorScrollSync,
+  currentState: PreviewScrollSyncState,
   now = Date.now()
 ): boolean {
-  return now <= pendingSync.expiresAt;
+  if (now > pendingSync.expiresAt) {
+    return false;
+  }
+
+  return Math.abs(currentState.sourceLine - pendingSync.targetLine) <= pendingSync.toleranceLines;
 }
 
 function clamp(value: number, min: number, max: number): number {

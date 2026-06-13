@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { getEditorScrollSyncState, shouldSuppressPreviewDrivenEditorSync } from '../src/scrollSync';
+import {
+  getEditorScrollSyncState,
+  isScrollSyncStateNear,
+  shouldSuppressPreviewDrivenEditorSync
+} from '../src/scrollSync';
 
 function createEditor(options: {
   lineCount: number;
@@ -62,12 +66,50 @@ describe('getEditorScrollSyncState', () => {
   });
 });
 
+describe('isScrollSyncStateNear', () => {
+  it('treats nearby scroll states as equivalent enough for restore suppression', () => {
+    expect(isScrollSyncStateNear(
+      {
+        sourceLine: 42,
+        maxLine: 99,
+        fallbackRatio: 0.42
+      },
+      {
+        sourceLine: 43,
+        maxLine: 99,
+        fallbackRatio: 0.43
+      }
+    )).toBe(true);
+  });
+
+  it('treats clearly different scroll states as not near', () => {
+    expect(isScrollSyncStateNear(
+      {
+        sourceLine: 42,
+        maxLine: 99,
+        fallbackRatio: 0.42
+      },
+      {
+        sourceLine: 48,
+        maxLine: 99,
+        fallbackRatio: 0.6
+      }
+    )).toBe(false);
+  });
+});
+
 describe('shouldSuppressPreviewDrivenEditorSync', () => {
-  it('suppresses editor echo while the preview-driven cooldown is active', () => {
+  it('suppresses editor echo while the preview-driven cooldown is active and the editor is near target', () => {
     const shouldSuppress = shouldSuppressPreviewDrivenEditorSync(
       {
         targetLine: 43,
-        expiresAt: 1_000
+        expiresAt: 1_000,
+        toleranceLines: 1
+      },
+      {
+        sourceLine: 44,
+        maxLine: 99,
+        fallbackRatio: 0.44
       },
       900
     );
@@ -75,11 +117,35 @@ describe('shouldSuppressPreviewDrivenEditorSync', () => {
     expect(shouldSuppress).toBe(true);
   });
 
+  it('does not suppress when the editor has drifted away from the pending target', () => {
+    const shouldSuppress = shouldSuppressPreviewDrivenEditorSync(
+      {
+        targetLine: 43,
+        expiresAt: 1_000,
+        toleranceLines: 1
+      },
+      {
+        sourceLine: 48,
+        maxLine: 99,
+        fallbackRatio: 0.48
+      },
+      900
+    );
+
+    expect(shouldSuppress).toBe(false);
+  });
+
   it('stops suppressing once the cooldown expires', () => {
     const shouldSuppress = shouldSuppressPreviewDrivenEditorSync(
       {
         targetLine: 43,
-        expiresAt: 1_000
+        expiresAt: 1_000,
+        toleranceLines: 1
+      },
+      {
+        sourceLine: 43,
+        maxLine: 99,
+        fallbackRatio: 0.43
       },
       1_100
     );

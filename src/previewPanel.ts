@@ -6,12 +6,15 @@ import { buildPreviewHtml, createNonce } from './htmlTemplate';
 import { renderMarkdown } from './markdownRenderer';
 import {
   getEditorScrollSyncState,
+  isScrollSyncStateNear,
   type PendingEditorScrollSync,
   type PreviewScrollSyncState,
   shouldSuppressPreviewDrivenEditorSync
 } from './scrollSync';
 
 const PREVIEW_DRIVEN_EDITOR_SYNC_WINDOW_MS = 450;
+const SCROLL_SYNC_TOLERANCE_LINES = 1;
+const PREVIEW_RESTORE_SUPPRESSION_WINDOW_MS = 400;
 
 export class PreviewPanel {
   // 当前只维护一个美化预览面板：重复执行命令时复用它，而不是打开多个窗口。
@@ -23,6 +26,8 @@ export class PreviewPanel {
   private refreshTimer: NodeJS.Timeout | undefined;
   private lastScrollSyncState: PreviewScrollSyncState | undefined;
   private pendingEditorScrollSync: PendingEditorScrollSync | undefined;
+  private suppressPreviewScrollUntil = 0;
+  private awaitingPreviewReady = false;
   private disposed = false;
 
   private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri, document: vscode.TextDocument) {
@@ -129,6 +134,8 @@ export class PreviewPanel {
       });
 
       // 最后把正文 HTML 放进完整页面模板，注入 CSS、CSP 和一次性 nonce。
+      this.awaitingPreviewReady = Boolean(this.lastScrollSyncState);
+      this.suppressPreviewScrollUntil = Date.now() + PREVIEW_RESTORE_SUPPRESSION_WINDOW_MS;
       this.panel.webview.html = buildPreviewHtml({
         webview: this.panel.webview,
         extensionUri: this.extensionUri,
@@ -173,11 +180,21 @@ export class PreviewPanel {
 
   private handleWebviewMessage(message: unknown): void {
     if (isPreviewReadyMessage(message)) {
-      this.syncVisibleEditorScroll();
+      if (!this.awaitingPreviewReady) {
+        this.syncVisibleEditorScroll();
+        return;
+      }
+
+      this.awaitingPreviewReady = false;
       return;
     }
 
     if (!isPreviewScrollMessage(message)) {
+      return;
+    }
+
+    if (Date.now() <= this.suppressPreviewScrollUntil) {
+      this.lastScrollSyncState = message;
       return;
     }
 
@@ -201,12 +218,20 @@ export class PreviewPanel {
       return;
     }
 
+    const currentState = getEditorScrollSyncState(editor);
+
+    if (isScrollSyncStateNear(currentState, this.lastScrollSyncState, { lineTolerance: SCROLL_SYNC_TOLERANCE_LINES })) {
+      this.pendingEditorScrollSync = undefined;
+      return;
+    }
+
     const targetLine = clamp(this.lastScrollSyncState.sourceLine, 0, Math.max(0, editor.document.lineCount - 1));
     const targetPosition = new vscode.Position(targetLine, 0);
 
     this.pendingEditorScrollSync = {
       targetLine,
-      expiresAt: Date.now() + PREVIEW_DRIVEN_EDITOR_SYNC_WINDOW_MS
+      expiresAt: Date.now() + PREVIEW_DRIVEN_EDITOR_SYNC_WINDOW_MS,
+      toleranceLines: SCROLL_SYNC_TOLERANCE_LINES
     };
 
     editor.revealRange(new vscode.Range(targetPosition, targetPosition), vscode.TextEditorRevealType.AtTop);
@@ -220,7 +245,7 @@ export class PreviewPanel {
     const nextState = getEditorScrollSyncState(editor);
     this.lastScrollSyncState = nextState;
 
-    if (!shouldSuppressPreviewDrivenEditorSync(this.pendingEditorScrollSync)) {
+    if (!shouldSuppressPreviewDrivenEditorSync(this.pendingEditorScrollSync, nextState)) {
       this.pendingEditorScrollSync = undefined;
       return false;
     }
@@ -270,6 +295,8 @@ export class PreviewPanel {
     this.disposed = true;
     PreviewPanel.currentPanel = undefined;
     this.pendingEditorScrollSync = undefined;
+    this.awaitingPreviewReady = false;
+    this.suppressPreviewScrollUntil = 0;
 
     if (this.refreshTimer) {
       clearTimeout(this.refreshTimer);

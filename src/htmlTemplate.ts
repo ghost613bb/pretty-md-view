@@ -65,6 +65,7 @@ export function buildPreviewHtml(options: HtmlTemplateOptions): string {
       const vscodeApi = typeof acquireVsCodeApi === 'function' ? acquireVsCodeApi() : undefined;
       let lastSharedSyncState;
       let lastReportedPreviewScrollState;
+      let lastProgrammaticSyncState;
       let previewScrollFrame = 0;
       let suppressPreviewScrollUntil = 0;
       let imageScale = 1;
@@ -199,6 +200,15 @@ export function buildPreviewHtml(options: HtmlTemplateOptions): string {
         return left.sourceLine === right.sourceLine && left.maxLine === right.maxLine;
       };
 
+      const isNearSyncState = (left, right) => {
+        if (!left || !right) {
+          return false;
+        }
+
+        return Math.abs(left.sourceLine - right.sourceLine) <= 1 &&
+          Math.abs((left.fallbackRatio ?? 0) - (right.fallbackRatio ?? 0)) <= 0.02;
+      };
+
       const buildPreviewScrollState = () => {
         const maxLine = Math.max(0, lastSharedSyncState?.maxLine ?? 0);
         const maxScrollTop = getMaxScrollTop();
@@ -218,7 +228,7 @@ export function buildPreviewHtml(options: HtmlTemplateOptions): string {
 
         const nextState = buildPreviewScrollState();
 
-        if (isEquivalentSyncState(nextState, lastReportedPreviewScrollState)) {
+        if (isNearSyncState(nextState, lastProgrammaticSyncState) || isEquivalentSyncState(nextState, lastReportedPreviewScrollState)) {
           return;
         }
 
@@ -252,7 +262,8 @@ export function buildPreviewHtml(options: HtmlTemplateOptions): string {
           : getFallbackScrollTop(normalizedState);
 
         lastSharedSyncState = normalizedState;
-        suppressPreviewScrollUntil = Date.now() + 120;
+        lastProgrammaticSyncState = normalizedState;
+        suppressPreviewScrollUntil = Date.now() + 320;
         window.scrollTo({
           top: clamp(nextScrollTop, 0, maxScrollTop),
           behavior: 'auto'
