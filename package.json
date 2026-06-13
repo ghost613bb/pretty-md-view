@@ -2,7 +2,15 @@
   "name": "pretty-md-view",
   "displayName": "Pretty Markdown Preview",
   "description": "A lightweight, prettier Markdown preview panel for VS Code.",
-  "version": "0.0.1",
+  "version": "0.0.2",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ghost613bb/pretty-md-view.git"
+  },
+  "homepage": "https://github.com/ghost613bb/pretty-md-view#readme",
+  "bugs": {
+    "url": "https://github.com/ghost613bb/pretty-md-view/issues"
+  },
   "publisher": "local-dev",
   "engines": {
     "vscode": "^1.90.0"
