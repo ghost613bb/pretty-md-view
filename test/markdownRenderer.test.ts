@@ -5,8 +5,21 @@ describe('renderMarkdown', () => {
   it('renders headings and paragraphs with source line anchors', () => {
     const html = renderMarkdown('# Title\n\nHello **world**.');
 
-    expect(html).toContain('<h1 data-pmv-source-line="0">Title</h1>');
+    expect(html).toContain('<h1 data-pmv-source-line="0" id="title">Title</h1>');
     expect(html).toContain('<p data-pmv-source-line="2">Hello <strong>world</strong>.</p>');
+  });
+
+  it('generates unique ids for duplicate headings', () => {
+    const html = renderMarkdown('## Q1\n\n## Q1');
+
+    expect(html).toContain('<h2 data-pmv-source-line="0" id="q1">Q1</h2>');
+    expect(html).toContain('<h2 data-pmv-source-line="2" id="q1-1">Q1</h2>');
+  });
+
+  it('falls back to a stable id when heading text has no slug characters', () => {
+    const html = renderMarkdown('## !!!');
+
+    expect(html).toContain('<h2 data-pmv-source-line="0" id="section">!!!</h2>');
   });
 
   it('renders task lists', () => {
@@ -29,6 +42,13 @@ describe('renderMarkdown', () => {
 
     expect(html).toContain('<span data-pmv-source-line="0"></span><table>');
     expect(html).toContain('<td width="50%" align="center"><strong>A</strong></td>');
+  });
+
+  it('keeps raw html ids for custom anchors', () => {
+    const html = renderMarkdown('<a id="q1"></a>\n\n<h2 id="custom-title">Title</h2>');
+
+    expect(html).toContain('<a id="q1"></a>');
+    expect(html).toContain('<h2 id="custom-title">Title</h2>');
   });
 
   it('renders images inside raw html tables', () => {

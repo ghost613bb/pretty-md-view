@@ -4,6 +4,19 @@ import MarkdownIt from 'markdown-it';
 import markdownItTaskLists from 'markdown-it-task-lists';
 
 const SOURCE_LINE_ATTRIBUTE = 'data-pmv-source-line';
+const FALLBACK_HEADING_ID = 'section';
+
+interface MarkdownTokenLike {
+  type: string;
+  tag: string;
+  nesting: number;
+  block: boolean;
+  content: string;
+  map?: [number, number] | null;
+  children?: MarkdownTokenLike[];
+  attrGet(name: string): string | null;
+  attrSet(name: string, value: string): void;
+}
 
 const ALLOWED_HTML_TAGS = new Set([
   'a',
@@ -49,6 +62,7 @@ const ALLOWED_HTML_ATTRIBUTES = new Set([
   'disabled',
   'height',
   'href',
+  'id',
   'rowspan',
   'src',
   'title',
@@ -86,6 +100,38 @@ markdown.core.ruler.push('pmv_source_line_anchors', (state) => {
     }
 
     token.attrSet(SOURCE_LINE_ATTRIBUTE, String(token.map[0]));
+  });
+});
+
+markdown.core.ruler.push('pmv_heading_ids', (state) => {
+  const usedIds = collectExplicitIds(state.tokens as MarkdownTokenLike[]);
+
+  state.tokens.forEach((token, index, tokens) => {
+    const headingToken = token as MarkdownTokenLike;
+
+    if (headingToken.type !== 'heading_open') {
+      return;
+    }
+
+    const existingId = headingToken.attrGet('id');
+
+    if (existingId) {
+      usedIds.add(existingId);
+      return;
+    }
+
+    const inlineToken = tokens[index + 1] as MarkdownTokenLike | undefined;
+
+    if (!inlineToken || inlineToken.type !== 'inline') {
+      return;
+    }
+
+    if (collectExplicitIds([inlineToken]).size > 0) {
+      return;
+    }
+
+    const headingId = createUniqueHeadingId(slugifyHeadingText(extractTextContent(inlineToken)), usedIds);
+    headingToken.attrSet('id', headingId);
   });
 });
 
@@ -143,6 +189,96 @@ function buildSourceLineMarker(sourceLine: number | undefined): string {
   }
 
   return `<span ${SOURCE_LINE_ATTRIBUTE}="${sourceLine}"></span>`;
+}
+
+function collectExplicitIds(tokens: MarkdownTokenLike[]): Set<string> {
+  const ids = new Set<string>();
+
+  const visitToken = (token: MarkdownTokenLike) => {
+    const tokenId = token.attrGet('id');
+
+    if (tokenId) {
+      ids.add(tokenId);
+    }
+
+    if (token.type === 'html_block' || token.type === 'html_inline') {
+      extractHtmlIds(token.content).forEach((id) => ids.add(id));
+    }
+
+    token.children?.forEach(visitToken);
+  };
+
+  tokens.forEach(visitToken);
+  return ids;
+}
+
+function extractHtmlIds(html: string): string[] {
+  const ids: string[] = [];
+  const attributePattern = /\sid\s*=\s*("([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/gi;
+  let match: RegExpExecArray | null;
+
+  while ((match = attributePattern.exec(html)) !== null) {
+    const id = (match[2] ?? match[3] ?? match[4] ?? '').trim();
+
+    if (id) {
+      ids.push(id);
+    }
+  }
+
+  return ids;
+}
+
+function extractTextContent(token: MarkdownTokenLike): string {
+  if (token.type === 'softbreak' || token.type === 'hardbreak') {
+    return ' ';
+  }
+
+  if (token.type === 'html_inline' || token.type === 'html_block') {
+    return stripHtmlTags(token.content);
+  }
+
+  if (!token.children || token.children.length === 0) {
+    return token.content;
+  }
+
+  return token.children.map((child) => extractTextContent(child)).join('');
+}
+
+function stripHtmlTags(value: string): string {
+  return value.replace(/<[^>]*>/g, ' ');
+}
+
+function slugifyHeadingText(value: string): string {
+  const normalizedValue = value
+    .trim()
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[̀-ͯ]/g, '');
+
+  const slug = normalizedValue
+    .replace(/[^\p{L}\p{N}\s-]/gu, ' ')
+    .replace(/[\s_-]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+  return slug || FALLBACK_HEADING_ID;
+}
+
+function createUniqueHeadingId(baseId: string, usedIds: Set<string>): string {
+  if (!usedIds.has(baseId)) {
+    usedIds.add(baseId);
+    return baseId;
+  }
+
+  let suffix = 1;
+  let nextId = `${baseId}-${suffix}`;
+
+  while (usedIds.has(nextId)) {
+    suffix += 1;
+    nextId = `${baseId}-${suffix}`;
+  }
+
+  usedIds.add(nextId);
+  return nextId;
 }
 
 function sanitizeHtml(html: string): string {

@@ -306,6 +306,32 @@ export function buildPreviewHtml(options: HtmlTemplateOptions): string {
         });
       };
 
+      const jumpToHashTarget = (hash) => {
+        const targetId = decodeURIComponent((hash || '').replace(/^#/, '')).trim();
+
+        if (!targetId) {
+          return false;
+        }
+
+        const targetElement = document.getElementById(targetId);
+
+        if (!targetElement) {
+          return false;
+        }
+
+        lastProgrammaticSyncState = undefined;
+        suppressPreviewScrollUntil = 0;
+        window.scrollTo({
+          top: clamp(targetElement.getBoundingClientRect().top + window.scrollY, 0, getMaxScrollTop()),
+          behavior: 'auto'
+        });
+        window.requestAnimationFrame(() => {
+          schedulePreviewScrollReport();
+        });
+
+        return true;
+      };
+
       window.addEventListener('message', (event) => {
         const message = event.data;
 
@@ -332,6 +358,19 @@ export function buildPreviewHtml(options: HtmlTemplateOptions): string {
 
       window.addEventListener('scroll', schedulePreviewScrollReport, { passive: true });
       window.addEventListener('resize', scheduleLastSync);
+      document.addEventListener('click', (event) => {
+        const link = event.target instanceof Element ? event.target.closest('.markdown-body a[href^="#"]') : null;
+
+        if (!(link instanceof HTMLAnchorElement)) {
+          return;
+        }
+
+        if (!jumpToHashTarget(link.hash)) {
+          return;
+        }
+
+        event.preventDefault();
+      });
       vscodeApi?.postMessage({ type: 'previewReady' });
 
       const updateImageTransform = () => {
