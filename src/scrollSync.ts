@@ -22,8 +22,10 @@ export interface PreviewScrollSyncState {
 
 export interface PendingEditorScrollSync {
   targetLine: number;
+  targetFallbackRatio: number;
   expiresAt: number;
   toleranceLines: number;
+  fallbackRatioTolerance: number;
 }
 
 export interface ScrollSyncToleranceOptions {
@@ -84,7 +86,10 @@ export function shouldSuppressPreviewDrivenEditorSync(
     return false;
   }
 
-  return Math.abs(currentState.sourceLine - pendingSync.targetLine) <= pendingSync.toleranceLines;
+  return (
+    Math.abs(currentState.sourceLine - pendingSync.targetLine) <= pendingSync.toleranceLines ||
+    Math.abs(currentState.fallbackRatio - pendingSync.targetFallbackRatio) <= pendingSync.fallbackRatioTolerance
+  );
 }
 
 function clamp(value: number, min: number, max: number): number {

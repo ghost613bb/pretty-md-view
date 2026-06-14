@@ -12,8 +12,9 @@ import {
   shouldSuppressPreviewDrivenEditorSync
 } from './scrollSync';
 
-const PREVIEW_DRIVEN_EDITOR_SYNC_WINDOW_MS = 450;
+const PREVIEW_DRIVEN_EDITOR_SYNC_WINDOW_MS = 700;
 const SCROLL_SYNC_TOLERANCE_LINES = 1;
+const PREVIEW_DRIVEN_EDITOR_SYNC_FALLBACK_RATIO_TOLERANCE = 0.08;
 const PREVIEW_RESTORE_SUPPRESSION_WINDOW_MS = 400;
 
 export class PreviewPanel {
@@ -230,8 +231,10 @@ export class PreviewPanel {
 
     this.pendingEditorScrollSync = {
       targetLine,
+      targetFallbackRatio: this.lastScrollSyncState.fallbackRatio,
       expiresAt: Date.now() + PREVIEW_DRIVEN_EDITOR_SYNC_WINDOW_MS,
-      toleranceLines: SCROLL_SYNC_TOLERANCE_LINES
+      toleranceLines: SCROLL_SYNC_TOLERANCE_LINES,
+      fallbackRatioTolerance: PREVIEW_DRIVEN_EDITOR_SYNC_FALLBACK_RATIO_TOLERANCE
     };
 
     editor.revealRange(new vscode.Range(targetPosition, targetPosition), vscode.TextEditorRevealType.AtTop);
@@ -243,7 +246,6 @@ export class PreviewPanel {
     }
 
     const nextState = getEditorScrollSyncState(editor);
-    this.lastScrollSyncState = nextState;
 
     if (!shouldSuppressPreviewDrivenEditorSync(this.pendingEditorScrollSync, nextState)) {
       this.pendingEditorScrollSync = undefined;

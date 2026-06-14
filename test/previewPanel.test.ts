@@ -103,8 +103,10 @@ describe('shouldSuppressPreviewDrivenEditorSync', () => {
     const shouldSuppress = shouldSuppressPreviewDrivenEditorSync(
       {
         targetLine: 43,
+        targetFallbackRatio: 0.43,
         expiresAt: 1_000,
-        toleranceLines: 1
+        toleranceLines: 1,
+        fallbackRatioTolerance: 0.08
       },
       {
         sourceLine: 44,
@@ -117,12 +119,34 @@ describe('shouldSuppressPreviewDrivenEditorSync', () => {
     expect(shouldSuppress).toBe(true);
   });
 
+  it('suppresses editor echo while the fallback ratio is still near the preview target', () => {
+    const shouldSuppress = shouldSuppressPreviewDrivenEditorSync(
+      {
+        targetLine: 43,
+        targetFallbackRatio: 0.43,
+        expiresAt: 1_000,
+        toleranceLines: 1,
+        fallbackRatioTolerance: 0.08
+      },
+      {
+        sourceLine: 48,
+        maxLine: 99,
+        fallbackRatio: 0.46
+      },
+      900
+    );
+
+    expect(shouldSuppress).toBe(true);
+  });
+
   it('does not suppress when the editor has drifted away from the pending target', () => {
     const shouldSuppress = shouldSuppressPreviewDrivenEditorSync(
       {
         targetLine: 43,
+        targetFallbackRatio: 0.43,
         expiresAt: 1_000,
-        toleranceLines: 1
+        toleranceLines: 1,
+        fallbackRatioTolerance: 0.04
       },
       {
         sourceLine: 48,
@@ -139,8 +163,10 @@ describe('shouldSuppressPreviewDrivenEditorSync', () => {
     const shouldSuppress = shouldSuppressPreviewDrivenEditorSync(
       {
         targetLine: 43,
+        targetFallbackRatio: 0.43,
         expiresAt: 1_000,
-        toleranceLines: 1
+        toleranceLines: 1,
+        fallbackRatioTolerance: 0.08
       },
       {
         sourceLine: 43,
